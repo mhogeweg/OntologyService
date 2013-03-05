@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ See the NOTICE file distributed with
+ this work for additional information regarding copyright ownership.
+ Esri Inc. licenses this file to You under the Apache License, Version 2.0
+ (the "License"); you may not use this file except in compliance with
+ the License.  You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+<project name="Ontology Service Build" default="main" basedir=".">
+	<property name="ont-dist.dir" value="${basedir}\dist"/>
+	<property name="ont-temp.dir" value="${basedir}\temp"/>
+	<property name="gpt-ver-num" value="1.0"/>
+	<path id="class-path">
+		<fileset dir="${basedir}/lib">
+			<include name="**/arq.jar"/>
+			<include name="**/commons-logging.jar"/>
+			<include name="**/icu4j_3_4.jar"/>
+			<include name="**/iri.jar"/>
+			<include name="**/jena.jar"/>
+			<include name="**/lucene-core-2.4.0.jar"/>
+			<include name="**/xercesImpl.jar"/>		
+		</fileset>
+		<fileset dir="${basedir}/build_lib">
+			<include name="**/servlet-api.jar"/>
+			<include name="**/jsp-api.jar"/>	
+		</fileset>
+	</path>
+	<target name="main">
+		<antcall target="build-ONT"/>
+	</target>
+	<target name="build-ONT">
+		<!-- Clean folders -->
+		<delete dir="${ont-dist.dir}"/>
+		<delete dir="${ont-temp.dir}"/>
+	    <mkdir dir="${ont-temp.dir}" />
+		<!-- Copy www folder -->
+		<antcall target="copy-www"/>
+		<!-- Compile custom java code -->
+		<antcall target="compile"/>
+		<!-- Copy configuration files under gpt folder such as gpt-tc.xml, schemas.xml -->
+		<antcall target="copy-config"/>
+		<!-- Copy library -->
+		<antcall target="copy-lib"/>
+		<!-- build the geoportal.war for ArcGIS for INSPIRE  -->
+		<mkdir dir="${ont-dist.dir}"/>
+		<war destfile="${ont-dist.dir}/OntologyService.war" webxml="${ont-temp.dir}/WEB-INF/web.xml" manifest="${basedir}/www/META-INF/MANIFEST.MF">
+			<fileset dir="${ont-temp.dir}"/>
+		</war>
+    <!-- Copy to TFS Drop Location-->
+    <antcall target="tfs-build"/>
+	</target>
+	<target name="copy-www">
+		<copy todir="${ont-temp.dir}/" verbose="true">
+			<fileset dir="${basedir}/www">
+			</fileset>
+		</copy>
+	</target>
+	<target name="compile">
+		<mkdir dir="${ont-temp.dir}/WEB-INF/classes"/> 
+		<javac srcdir="${basedir}/src" destdir="${ont-temp.dir}/WEB-INF/classes" verbose="true">
+			<classpath refid="class-path"/>
+		</javac>
+	</target>
+	<target name="copy-config">
+		<copy todir="${ont-temp.dir}/WEB-INF/classes" verbose="true">
+			<fileset dir="${basedir}/src">
+				<include name="**/*.xml"/>
+				<include name="**/*.owl"/>
+				<include name="**/*.properties"/>
+				<exclude name="**/*.java"/>
+			</fileset>
+		</copy>
+	</target>
+	<target name="copy-lib">
+		<copy todir="${ont-temp.dir}/WEB-INF/lib" verbose="true">
+			<fileset dir="${basedir}/lib">
+				<include name="**/*.jar"/>
+				<exclude name="**/*.scc"/>
+			</fileset>
+		</copy>
+	</target>
+
+  <!--
+    Target: tfs-build
+    Needed to publish files to TFS drop location
+  -->
+  <target name="tfs-build" if="BinariesRoot">
+    <property name="BIN_ROOT_DEPLOYDIR"
+            value="${BinariesRoot}/OntologyService" />
+    <mkdir  dir="${BIN_ROOT_DEPLOYDIR}" />
+    <copy todir="${BIN_ROOT_DEPLOYDIR}">
+      <fileset dir="${ont-dist.dir}"/>
+    </copy>
+
+    <delete dir="${DropLocation}/Latest/OntologyService"/>
+    <mkdir dir="${DropLocation}/Latest/OntologyService" />
+    <copy todir="${DropLocation}/Latest/OntologyService">
+      <fileset dir="${BIN_ROOT_DEPLOYDIR}"/>
+    </copy>
+ 
+  </target>
+  
+</project>
